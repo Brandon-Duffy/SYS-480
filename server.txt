@@ -1,8 +1,8 @@
 # Hardcoded values for vCenter Server, snapshot name, VMHost, and Datastore
-$vserver = "vcenter.brandon.local"  # Replace with your vCenter Server
-$snapshotName = "Base"  # Replace with the actual snapshot name
-$vmhostName = "192.168.3.202"  # Replace with your ESXi host name
-$dsName = "datastore1"  # Replace with your datastore name
+$vserver = "vcenter.brandon.local"  
+$snapshotName = "Base"  
+$vmhostName = "192.168.3.202"  
+$dsName = "datastore1" 
 
 # List of VMs to choose from (source VM name and full clone VM name)
 $vmList = @(

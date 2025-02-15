@@ -1,0 +1,59 @@
+# Hardcoded values for vCenter Server, snapshot name, VMHost, and Datastore
+$vserver = "vcenter.brandon.local"  # Replace with your vCenter Server
+$snapshotName = "Base"  # Replace with the actual snapshot name
+$vmhostName = "192.168.3.202"  # Replace with your ESXi host name
+$dsName = "datastore1"  # Replace with your datastore name
+
+# List of VMs to choose from (source VM name and full clone VM name)
+$vmList = @(
+    @{sourceVMName = "480-fw"; fullVMName = "480-fw.clone"},
+    @{sourceVMName = "DC-brandon"; fullVMName = "DC-brandon.clone"},
+    @{sourceVMName = "vcenter"; fullVMName = "vcenter.clone"},
+    @{sourceVMName = "xubuntu-wan"; fullVMName = "xubuntu-wan.clone"}
+    # Add more VMs as needed
+)
+
+# Display the list of VMs and prompt the user to select one
+Write-Host "Available VMs:"
+for ($i = 0; $i -lt $vmList.Count; $i++) {
+    Write-Host "$($i+1). Source VM: $($vmList[$i].sourceVMName), Full Clone VM: $($vmList[$i].fullVMName)"
+}
+
+$selection = Read-Host "Enter the number of the VM you want to select"
+$selectedVM = $vmList[$selection - 1]
+
+$sourceVMName = $selectedVM.sourceVMName
+$fullVMName = $selectedVM.fullVMName
+
+# Connect to vCenter Server
+Connect-VIServer -Server $vserver
+
+# Get the source VM
+$vm = Get-VM -Name $sourceVMName
+
+# Get the VMHost and Datastore
+$vmhost = Get-VMHost -Name $vmhostName
+$ds = Get-Datastore -Name $dsName
+
+# Create the temporary linked clone
+$linkedName = "$($vm.Name).linked"
+Write-Host "Creating a linked clone: $linkedName"
+$linkedvm = New-VM -LinkedClone -Name $linkedName -VM $vm -ReferenceSnapshot $snapshotName -VMHost $vmhost -Datastore $ds
+
+# Create the full VM from the linked clone
+Write-Host "Creating the full VM: $fullVMName"
+$newvm = New-VM -Name $fullVMName -VM $linkedvm -VMHost $vmhost -Datastore $ds
+
+# Take a new snapshot of the full VM
+Write-Host "Taking a snapshot for $fullVMName"
+$newvm | New-Snapshot -Name "Base"
+
+# Cleanup the temporary linked clone
+Write-Host "Removing temporary linked clone: $linkedName"
+$linkedvm | Remove-VM -Confirm:$false
+
+# Disconnect from vCenter
+Write-Host "Disconnecting from vCenter..."
+Disconnect-VIServer -Server $vserver -Confirm:$false
+
+Write-Host "Script completed successfully!"

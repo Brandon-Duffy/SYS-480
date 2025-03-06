@@ -1,0 +1,84 @@
+function 480banner()
+{
+    Write-Host "Hello SYS-480"
+}
+
+Function 480Connect([string] $server)
+{
+    $conn = $global:DefaultVIServer
+    # are we connected already?
+    if ($conn){
+        $msg = "Already connected to: {0}" -f $conn
+
+        Write-Host -ForegroundColor Green $msg
+    }else
+    {
+        $conn = Connect-VIServer -Server $server
+        #if this fails, let Connect-VIServer handle the exception
+    }
+}
+
+
+
+Function Create-NewLinkedClone {
+    
+    #List all VMs, (All will have a Base vm Snapshot)
+    $AllVMs = Get-VM
+    if (-not $AllVMs) {
+        Write-Host "Error, no VMs found inside function" -ForegroundColor "Red"
+        return
+    }
+
+
+
+    Write-Host "Available VMs:"
+    $AllVMs | Select-Object Name
+
+    Write-Host $AllVMs
+
+
+    $VMCloner = Read-Host "Enter VM name to clone"
+    $NewClonedName = Read-Host "Enter name of the new linked clone VM:"
+
+    Write-Host "VM to clone: '$VMCloner'"
+
+
+    # Get Base VM
+
+    #$BaseVM = Get-VM | Where-Object ( $_.Name -eq $VMCloner)
+    #if (-not $BaseVM) {
+     #   Write-Host "Error, '$VMCloner' not found." -ForegroundColor "Red"
+      #  return
+
+   # }
+
+
+    # Get base snapshot
+
+    $BaseSnapshot = (Get-Snapshot -VM (Get-VM -Name $VMCloner) -Name "Base")
+    if (-not $BaseSnapshot) {
+        Write-Host "Error, Snapshot 'Base' not found for VM '$VMCloner'" -ForegroundColor "Red"
+        return
+    }
+
+    # Call the JSON file with our vcenter configurations. 
+
+    $config = Get-Content "/home/brandon/Code/480.json" | ConvertFrom-json
+
+    # Variables for network, vcenter server, and datastore
+
+    $network = $config.default_network
+    $vcenterserver = $config.vcenter_server
+    $datastore = "datastore2"
+
+    $VMHost = Get-VMHost -Server $config.vcenter_server
+
+    Write-Host "Creating:" $NewClonedName
+
+    # Create the linked clone
+
+    New-VM -LinkedClone -Name $NewClonedName -VM $VMCloner -ReferenceSnapshot $BaseSnapshot -Datastore $datastore -VMHost $VMHost
+
+    Write-Host "Successfully created new clone,:" $NewClonedName
+}
+    
